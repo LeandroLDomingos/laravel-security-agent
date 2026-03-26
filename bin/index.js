@@ -6,6 +6,7 @@ import {
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { copySecurity } from '../src/copy-security.js';
+import { copyCopilot } from '../src/copy-copilot.js';
 import { applyGitignore } from '../src/update-gitignore.js';
 import { installHook } from '../src/install-hook.js';
 
@@ -23,11 +24,12 @@ if (!existsSync(join(cwd, 'composer.json'))) {
 
 const options = await multiselect({
     message: 'What would you like to install?',
-    initialValues: ['security', 'gitignore', 'hook'],
+    initialValues: ['claude', 'copilot', 'gitignore', 'hook'],
     options: [
-        { value: 'security',  label: 'SECURITY.md',       hint: 'AI security audit agent' },
-        { value: 'gitignore', label: 'Update .gitignore',  hint: 'protects deploy.php, .env, SSH keys' },
-        { value: 'hook',      label: 'Pre-commit hook',    hint: 'blocks commits of sensitive files' },
+        { value: 'claude',   label: 'SECURITY.md',                        hint: 'Claude Code security agent' },
+        { value: 'copilot',  label: '.github/copilot-instructions.md',     hint: 'GitHub Copilot security agent' },
+        { value: 'gitignore',label: 'Update .gitignore',                   hint: 'protects deploy.php, .env, SSH keys' },
+        { value: 'hook',     label: 'Pre-commit hook',                     hint: 'blocks commits of sensitive files' },
     ],
 });
 
@@ -38,8 +40,8 @@ if (isCancel(options)) {
 
 const s = spinner();
 
-// --- SECURITY.md ---
-if (options.includes('security')) {
+// --- SECURITY.md (Claude Code) ---
+if (options.includes('claude')) {
     const dest = join(cwd, 'SECURITY.md');
     let overwrite = false;
 
@@ -57,6 +59,27 @@ if (options.includes('security')) {
     s.stop(result.skipped
         ? 'SECURITY.md kept (not overwritten)'
         : '✔  SECURITY.md installed');
+}
+
+// --- copilot-instructions.md (GitHub Copilot) ---
+if (options.includes('copilot')) {
+    const dest = join(cwd, '.github', 'copilot-instructions.md');
+    let overwrite = false;
+
+    if (existsSync(dest)) {
+        const answer = await confirm({
+            message: '.github/copilot-instructions.md already exists. Overwrite?',
+            initialValue: false,
+        });
+        if (isCancel(answer)) { cancel('Cancelled.'); process.exit(0); }
+        overwrite = answer;
+    }
+
+    s.start('Copying copilot-instructions.md...');
+    const result = copyCopilot(cwd, overwrite);
+    s.stop(result.skipped
+        ? '.github/copilot-instructions.md kept (not overwritten)'
+        : '✔  .github/copilot-instructions.md installed');
 }
 
 // --- .gitignore ---
@@ -77,15 +100,18 @@ if (options.includes('hook')) {
         : '✔  pre-commit hook installed at .git/hooks/pre-commit');
 }
 
-note(
-    'Open this project in Claude Code and say:\n"audit security" or "run SECURITY.md"',
-    'Next step'
-);
+const nextSteps = [];
+if (options.includes('claude'))  nextSteps.push('Claude Code: say "audit security" or "run SECURITY.md"');
+if (options.includes('copilot')) nextSteps.push('Copilot: .github/copilot-instructions.md is loaded automatically');
+
+if (nextSteps.length > 0) {
+    note(nextSteps.join('\n'), 'Next step');
+}
 
 const capybara = `
 　　　　　/)─―ヘ
 　　　＿／　　　　＼
-　／　　　　●　　　●丶
+　 ／　　　　●　　　●丶
 　｜　　　　　　　▼　|
 　｜　　　　　　　亠ノ
 　 U￣U￣￣￣￣U￣U

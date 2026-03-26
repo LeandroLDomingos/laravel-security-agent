@@ -13,9 +13,9 @@
     "public"
   ],
   "scripts": {
-    "test": "node --test test/copy-security.test.js test/update-gitignore.test.js test/install-hook.test.js",
+    "test": "node --test test/copy-security.test.js test/update-gitignore.test.js test/install-hook.test.js test/copy-copilot.test.js",
     "start": "node bin/index.js",
-    "prepublishOnly": "node --test test/copy-security.test.js test/update-gitignore.test.js test/install-hook.test.js"
+    "prepublishOnly": "node --test test/copy-security.test.js test/update-gitignore.test.js test/install-hook.test.js test/copy-copilot.test.js"
   },
   "dependencies": {
     "@clack/prompts": "^0.9.1"
