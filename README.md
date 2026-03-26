@@ -4,7 +4,7 @@
 
 > *"Your friendly capybara keeping your Laravel app safe."*
 
-A one-command security setup for Laravel projects. Capi Guard installs an AI-powered security audit agent, hardens your `.gitignore`, and adds a pre-commit hook that blocks sensitive files before they reach GitHub.
+A one-command security toolkit for Laravel projects. Capi Guard installs AI-powered security audit agents, hardens your `.gitignore`, adds a pre-commit hook, and provides an **autonomous Antigravity PHP Agent** compatible with GitHub Copilot Skills.
 
 ## Usage
 
@@ -16,60 +16,87 @@ npx laravel-security-agent
 
 Capi Guard will ask what you want to install and handle everything interactively.
 
-## What gets installed
+## Installation Options
 
-| Item | What it does |
-|------|-------------|
-| `SECURITY.md` | Security audit agent — drop it in any project and tell your AI to "audit security" |
-| `.gitignore` entries | Protects `deploy.php`, `.env`, SSH keys, and certificates from being committed |
-| Pre-commit hook | Blocks commits of sensitive files and hardcoded credentials automatically |
+You can install any combination of the following:
 
-## Using the security agent
+| Option | What it installs | Best for |
+|--------|-----------------|----------|
+| **Claude Code rules** | `SECURITY.md` | Claude Code CLI users |
+| **Copilot rules** | `.github/copilot-instructions.md` | Copilot Editor users |
+| **Update .gitignore** | Enforces Laravel security patterns | Preventing secret leaks |
+| **Pre-commit hook** | Blocks commits of sensitive keys | CI/CD discipline |
+| **Antigravity Agent** | Complete PHP 8.3 Agent + Copilot Skills | **Advanced Autonomous Security** |
 
-After installing `SECURITY.md`, open the project in **Claude Code** and say:
+---
 
-> **"audit security"**
+## 🤖 The Antigravity Agent (PHP)
 
-Capi Guard will:
+This is the flagship feature. When you select the **Antigravity Agent**, Capi Guard scaffolds a production-ready, zero-trust AI agent directly into your Laravel `app/` directory.
 
-1. Map all controllers, routes, and models in the project
-2. Audit 13 security categories (IDOR, SQL Injection, uploads, credentials, and more)
-3. Generate a report with 🔴 Critical / 🟡 Important / 🟢 Suggestion
-4. Ask which issues to fix — and wait for your approval before touching any code
+It exposes an API endpoint (`/api/agent/invoke`) that GitHub Copilot can call to perform **deterministic, local code analysis** natively in PHP.
 
-The agent automatically responds **in your language** — write in English, Portuguese, Spanish, or any other language and it will reply in kind.
+### Available Skills
 
-## Security categories audited
+Copilot uses these skills to analyze your code instantly without sending your entire codebase to the LLM:
 
-| Category | What's checked |
+1. 🔍 **vulnerabilityScan**: Uses Regex to scan 13 security categories across any directory.
+2. 🛡️ **analyzeAuthFlow**: Uses PHP Reflection to trace controllers and detect missing `$this->authorize()` calls.
+3. 🩹 **applySecurityPatch**: Applies surgical CVE patches and automatically runs Artisan commands afterwards (`optimize:clear`, `test`, etc).
+4. 🧹 **sanitizeGitHistory**: Generates a `git filter-repo` script with a blob-callback to purge old `.env` files and redact naked passwords/IPs from your *entire* Git history commits.
+
+### Copilot Sub-Agents Included
+
+The installer also copies 3 specialised Copilot Agents into `.github/agents/`. You can invoke them in the Copilot Chat:
+
+- `@capi-guard` — Full stack auditor. Runs scans, analyzes auth, and patches files following a strict 6-step workflow.
+- `@patch-aplicado` — Surgical CVE patcher. Always creates a backup, runs the patch, and validates with Artisan.
+- `@auth-guard` — Read-only analyst. Only reads code to find authorization gaps and suggest Policies.
+
+### How to configure the Agent
+
+1. Add the route to `routes/api.php`:
+   ```php
+   use App\Http\Controllers\AgentController;
+   use App\Http\Middleware\ZeroTrustMiddleware;
+
+   Route::post("/api/agent/invoke", AgentController::class)
+        ->middleware(["auth:sanctum", ZeroTrustMiddleware::class]);
+   ```
+2. Issue a Sanctum token with the `agent:invoke` ability for Copilot.
+3. Register `.github/manifest.json` in your GitHub Copilot Extension settings.
+4. *(Optional)* Publish the config file to edit CVE patches and rate limits:
+   ```bash
+   php artisan vendor:publish --tag=security-agent-config
+   ```
+
+---
+
+## The Passive Rules (Claude & Copilot)
+
+If you just want instructions for your AI without the full PHP agent, install `SECURITY.md` or `.github/copilot-instructions.md`.
+
+When you ask the AI to "audit security", it will check for 13 categories including:
+
+| Category | What gets checked |
 |----------|---------------|
-| IDOR | Policies, `authorize()`, ownership scoping |
-| SQL Injection | Raw queries, dynamic `orderBy`, file imports |
-| Field validation | `min`/`max` on every field, FormRequests |
-| File uploads | `mimetypes:` vs `mimes:`, private storage, UUID filenames |
-| Mass Assignment | `$fillable` scope, role escalation via request |
-| Authorization | Route middleware groups, role checks |
-| CSRF | `VerifyCsrfToken`, Sanctum stateful domains |
-| XSS | `v-html` usage, HTML purification |
-| Rate Limiting | Login, uploads, critical endpoints |
-| Session | Secure cookie, same-site, encryption |
-| Security Headers | CSP, X-Frame-Options, server header removal |
-| Credentials | `Hash::check`, `APP_DEBUG`, log sanitization |
-| Git secrets | `.env` in history, hardcoded IPs, deploy paths |
+| **IDOR** | Policies, `authorize()`, ownership scoping |
+| **SQL Injection** | Raw queries, dynamic `orderBy` whitelisting |
+| **Mass Assignment** | Empty `$guarded`, role escalation via `$request->all()` |
+| **File Uploads** | `mimetypes:` vs `mimes:`, private storage, server-side naming |
+| **CSRF & XSS** | Exclusions in `VerifyCsrfToken`, `v-html` usage |
+| **Git secrets** | `APP_DEBUG`, `.env` in history, hardcoded credentials |
 
-## Pre-commit hook protection
+## Pre-commit hook & .gitignore
 
-Once installed, the hook blocks commits of:
-
-- `.env` and `deploy.php` files
-- SSH keys and certificates (`.pem`, `.key`, `.p12`)
-- Diffs containing hardcoded passwords or API keys
+The `.gitignore` updater enforces patterns for `deploy.php`, `auth.json`, e `.phpunit.result.cache`.
+The pre-commit hook automatically blocks attempts to `git commit` any `.env` file, `.pem`, `.p12`, or `.key` file.
 
 ## Requirements
 
-- Node.js 18+
+- Node.js 18+ (to run the npx command)
 - Laravel project (`composer.json` at the root)
-- Claude Code (for the AI audit agent)
+- *For the Agent:* PHP 8.2+ and Laravel Sanctum
 
 ## License
 
