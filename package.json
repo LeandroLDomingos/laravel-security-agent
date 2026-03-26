@@ -1,0 +1,33 @@
+{
+  "name": "laravel-security-agent",
+  "version": "1.0.0",
+  "description": "Capi Guard — a security audit agent for Laravel projects",
+  "type": "module",
+  "bin": {
+    "laravel-security-agent": "./bin/index.js"
+  },
+  "files": [
+    "bin",
+    "src",
+    "templates",
+    "public"
+  ],
+  "scripts": {
+    "test": "node --test test/copy-security.test.js test/update-gitignore.test.js test/install-hook.test.js",
+    "start": "node bin/index.js",
+    "prepublishOnly": "node --test test/copy-security.test.js test/update-gitignore.test.js test/install-hook.test.js"
+  },
+  "dependencies": {
+    "@clack/prompts": "^0.9.1"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": ["laravel", "security", "audit", "idor", "sql-injection", "capi-guard"],
+  "author": "",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-username/laravel-security-agent.git"
+  },
+  "license": "MIT"
+}
