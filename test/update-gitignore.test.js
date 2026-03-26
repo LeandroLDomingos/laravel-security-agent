@@ -16,6 +16,14 @@ test('buildLinesToAdd does not include already-present entries', () => {
     assert.ok(toAdd.includes('*.pem'), 'should add *.pem');
 });
 
+test('buildLinesToAdd does not duplicate comment headers already in the file', () => {
+    const existing = '# Capi Guard\n.env\n';
+    const entries = ['', '# Capi Guard', '.env', '*.pem'];
+    const toAdd = buildLinesToAdd(existing, entries);
+    assert.ok(!toAdd.includes('# Capi Guard'), 'should not re-add existing comment');
+    assert.ok(toAdd.includes('*.pem'), 'should still add new entries');
+});
+
 test('applyGitignore creates .gitignore when it does not exist', () => {
     const dir = mkdtempSync(join(tmpdir(), 'gi-test-'));
     const result = applyGitignore(dir, ENTRIES);
