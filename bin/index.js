@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import {
-    intro, outro, multiselect, confirm,
+    intro, outro, confirm,
     spinner, note, cancel, isCancel
 } from '@clack/prompts';
 import { existsSync } from 'node:fs';
@@ -23,22 +23,7 @@ if (!existsSync(join(cwd, 'composer.json'))) {
     );
 }
 
-const options = await multiselect({
-    message: 'What would you like to install?',
-    initialValues: ['claude', 'copilot', 'gitignore', 'hook'],
-    options: [
-        { value: 'claude',   label: 'SECURITY.md',                        hint: 'Claude Code security agent' },
-        { value: 'copilot',  label: '.github/copilot-instructions.md',     hint: 'GitHub Copilot security agent' },
-        { value: 'gitignore',label: 'Update .gitignore',                   hint: 'protects deploy.php, .env, SSH keys' },
-        { value: 'hook',     label: 'Pre-commit hook',                     hint: 'blocks commits of sensitive files' },
-        { value: 'agent',    label: 'Antigravity Agent (PHP)',              hint: 'Copilot Skills + PHP 8.3 agent classes' },
-    ],
-});
-
-if (isCancel(options)) {
-    cancel('Installation cancelled.');
-    process.exit(0);
-}
+const options = ['claude', 'copilot', 'gitignore', 'hook', 'agent'];
 
 const s = spinner();
 
