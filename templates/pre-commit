@@ -1,0 +1,26 @@
+#!/bin/sh
+# laravel-security-agent (Capi Guard) — pre-commit hook
+
+BLOCKED_FILES=".env deploy.php"
+BLOCKED_PATTERNS="\.pem$|\.key$|\.p12$|id_rsa|id_ed25519"
+
+for f in $BLOCKED_FILES; do
+    if git diff --cached --name-only | grep -qF "$f"; then
+        echo "❌ BLOCKED: attempt to commit '$f' (sensitive file)"
+        echo "   Add to .gitignore: echo '$f' >> .gitignore"
+        exit 1
+    fi
+done
+
+if git diff --cached --name-only | grep -qE "$BLOCKED_PATTERNS"; then
+    echo "❌ BLOCKED: attempt to commit a key or certificate file"
+    exit 1
+fi
+
+if git diff --cached | grep -iE "(DB_PASSWORD|APP_KEY|password\s*=\s*['\"][^'\"]{4,}|secret\s*=\s*['\"][^'\"]{4,})"; then
+    echo "❌ BLOCKED: possible hardcoded credential detected in diff"
+    echo "   Use environment variables (.env) instead of inline values"
+    exit 1
+fi
+
+exit 0
