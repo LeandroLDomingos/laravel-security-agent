@@ -82,4 +82,19 @@ note(
     'Next step'
 );
 
+const capybara = `
+　　　　　/)─―ヘ
+　　　＿／　　　　＼
+　 ／　　　　●　　　●丶
+　｜　　　　　　　▼　|
+　｜　　　　　　　亠ノ
+　 U￣U￣￣￣￣U￣U
+
+  Thanks for installing Capi Guard! 🐾
+  If this helped you, please give us a star:
+  ★  https://github.com/leandrodomingos/laravel-security-agent
+`;
+
+console.log(capybara);
+
 outro('Done! Capi Guard is watching. 🐾');
