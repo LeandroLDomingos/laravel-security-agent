@@ -4,7 +4,7 @@
   "description": "Capi Guard — a security audit agent for Laravel projects",
   "type": "module",
   "bin": {
-    "laravel-security-agent": "./bin/index.js"
+    "laravel-security-agent": "bin/index.js"
   },
   "files": [
     "bin",
@@ -23,11 +23,18 @@
   "engines": {
     "node": ">=18"
   },
-  "keywords": ["laravel", "security", "audit", "idor", "sql-injection", "capi-guard"],
+  "keywords": [
+    "laravel",
+    "security",
+    "audit",
+    "idor",
+    "sql-injection",
+    "capi-guard"
+  ],
   "author": "leandroldomingos",
   "repository": {
     "type": "git",
-    "url": "https://github.com/LeandroLDomingos/laravel-security-agent.git"
+    "url": "git+https://github.com/LeandroLDomingos/laravel-security-agent.git"
   },
   "license": "MIT"
 }
