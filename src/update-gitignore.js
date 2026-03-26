@@ -37,7 +37,8 @@ export function applyGitignore(destDir, entries = DEFAULT_ENTRIES) {
     if (meaningful.length === 0) return { added: 0, created: false };
 
     const created = !existsSync(path);
+    const linesToWrite = (created && toAdd[0] === '') ? toAdd.slice(1) : toAdd;
     const prefix = created ? '' : '\n';
-    appendFileSync(path, prefix + toAdd.join('\n') + '\n');
+    appendFileSync(path, prefix + linesToWrite.join('\n') + '\n');
     return { added: meaningful.length, created };
 }

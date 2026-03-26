@@ -22,6 +22,7 @@ test('applyGitignore creates .gitignore when it does not exist', () => {
     const content = readFileSync(join(dir, '.gitignore'), 'utf8');
     assert.ok(content.includes('.env'));
     assert.equal(result.created, true);
+    assert.ok(!content.startsWith('\n'), 'fresh .gitignore should not start with a newline');
 });
 
 test('applyGitignore does not duplicate existing entries', () => {
