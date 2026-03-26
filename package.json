@@ -24,10 +24,10 @@
     "node": ">=18"
   },
   "keywords": ["laravel", "security", "audit", "idor", "sql-injection", "capi-guard"],
-  "author": "",
+  "author": "leandroldomingos",
   "repository": {
     "type": "git",
-    "url": "https://github.com/your-username/laravel-security-agent.git"
+    "url": "https://github.com/LeandroLDomingos/laravel-security-agent.git"
   },
   "license": "MIT"
 }

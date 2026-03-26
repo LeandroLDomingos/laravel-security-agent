@@ -92,7 +92,7 @@ const capybara = `
 
   Thanks for installing Capi Guard! 🐾
   If this helped you, please give us a star:
-  ★  https://github.com/leandrodomingos/laravel-security-agent
+  ★  https://github.com/LeandroLDomingos/laravel-security-agent
 `;
 
 console.log(capybara);
