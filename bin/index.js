@@ -85,7 +85,7 @@ note(
 const capybara = `
 　　　　　/)─―ヘ
 　　　＿／　　　　＼
-　 ／　　　　●　　　●丶
+　／　　　　●　　　●丶
 　｜　　　　　　　▼　|
 　｜　　　　　　　亠ノ
 　 U￣U￣￣￣￣U￣U
