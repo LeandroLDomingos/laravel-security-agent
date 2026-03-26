@@ -121,6 +121,15 @@ final class GitHistorySanitizationSkill implements SkillInterface
         // ── Phase 3: Discover sensitive files in history ─────────────────────
         $sensitiveFiles = $this->findSensitiveFilesInHistory($repoPath);
 
+        // ── Phase 3b: Deep audit deploy.php files found in history ───────────
+        $deployPhpFiles = array_values(array_filter(
+            $sensitiveFiles,
+            fn (string $f): bool => preg_match('/deploy\.php$/i', $f) === 1
+        ));
+        $deployPhpAudit = !empty($deployPhpFiles)
+            ? $this->auditDeployPhpInHistory($repoPath, $deployPhpFiles)
+            : [];
+
         // ── Phase 4: Generate sanitizer script ───────────────────────────────
         $script = $this->buildSanitizerScript($repoPath, $backupBranch, $sensitiveFiles);
         file_put_contents($scriptDest, $script);
@@ -140,22 +149,28 @@ final class GitHistorySanitizationSkill implements SkillInterface
 
         // ── Build response ────────────────────────────────────────────────────
         $totalSecrets = array_sum(array_map('count', $secretFindings));
+        $deployRisk   = array_sum(array_map(
+            fn (array $d): int => count($d['server_ips']) + count($d['server_paths']),
+            $deployPhpAudit
+        ));
 
         return [
             'summary' => implode(' | ', [
                 count($gitignoreFindings) . ' gitignore gaps',
                 $totalSecrets . ' secret occurrences across ' . count($secretFindings) . ' pattern types',
                 count($sensitiveFiles) . ' sensitive files in history',
+                count($deployPhpFiles) . ' deploy.php file(s) — ' . $deployRisk . ' server exposure(s)',
                 $dryRun ? 'DRY RUN — script generated only' : 'REWRITE EXECUTED',
             ]),
-            'backup_branch_exists' => $backupExists,
-            'dryRun'               => $dryRun,
-            'gitignore_gaps'       => $gitignoreFindings,
-            'secret_findings'      => $secretFindings,
+            'backup_branch_exists'    => $backupExists,
+            'dryRun'                  => $dryRun,
+            'gitignore_gaps'          => $gitignoreFindings,
+            'secret_findings'         => $secretFindings,
             'sensitive_files_history' => $sensitiveFiles,
-            'generated_script_path'  => $scriptDest,
-            'execution_result'       => $executionResult,
-            'next_steps'             => $this->buildNextSteps($backupExists, $backupBranch, $dryRun, $scriptDest),
+            'deploy_php_audit'        => $deployPhpAudit,
+            'generated_script_path'   => $scriptDest,
+            'execution_result'        => $executionResult,
+            'next_steps'              => $this->buildNextSteps($backupExists, $backupBranch, $dryRun, $scriptDest),
         ];
     }
 
@@ -292,6 +307,91 @@ final class GitHistorySanitizationSkill implements SkillInterface
         }
 
         return array_values($sensitive);
+    }
+
+    /**
+     * For each deploy.php found in history, retrieve its blob content and
+     * extract any server IP addresses and server folder paths exposed.
+     *
+     * Uses `git log --all -- <file>` to list commits, then `git show <commit>:<file>`
+     * to read the actual file content at that point in time.
+     *
+     * @param  string[] $deployFiles  Relative paths matching deploy.php in git history.
+     * @return array<int, array{
+     *   file: string,
+     *   commit: string,
+     *   server_ips: string[],
+     *   server_paths: string[]
+     * }>
+     */
+    private function auditDeployPhpInHistory(string $repoPath, array $deployFiles): array
+    {
+        // Matches public IPs — excludes loopback (127.), link-local (169.254.),
+        // and RFC-1918 private ranges (10., 172.16-31., 192.168.) which are
+        // internal infrastructure and not staging/production exposures.
+        $ipPattern = '/\b(?!127\.|169\.254\.|10\.|172\.(?:1[6-9]|2\d|3[01])\.|192\.168\.)' .
+                     '(?:\d{1,3}\.){3}\d{1,3}\b/';
+
+        // Matches common Deployer/Envoy server path keys and bare Unix paths.
+        $pathPattern = '/(?:deploy_path|current_path|release_path|app_path|root_path|upload_path)' .
+                       '\s*[=>\'"]+\s*[\'"]?(\/[^\s\'">,;)]+)' .
+                       '|(?<![.\w])(?:\/(?:var|home|srv|opt|www|data|sites)\/[^\s\'">,;)]+)/';
+
+        $results = [];
+
+        foreach ($deployFiles as $filePath) {
+            // Get the most recent commit that touched this file across all branches.
+            $logProcess = new Process(
+                ['git', 'log', '--all', '--full-history', '--format=%H', '-1', '--', $filePath],
+                $repoPath,
+                null,
+                null,
+                30
+            );
+            $logProcess->run();
+            $commit = trim($logProcess->getOutput());
+
+            if (empty($commit)) {
+                continue;
+            }
+
+            // Read the file blob at that commit.
+            $showProcess = new Process(
+                ['git', 'show', "{$commit}:{$filePath}"],
+                $repoPath,
+                null,
+                null,
+                30
+            );
+            $showProcess->run();
+            $content = $showProcess->getOutput();
+
+            if (empty($content)) {
+                continue;
+            }
+
+            // Extract IPs.
+            preg_match_all($ipPattern, $content, $ipMatches);
+            $ips = array_values(array_unique($ipMatches[0]));
+
+            // Extract server paths.
+            preg_match_all($pathPattern, $content, $pathMatches);
+            // Group 1 = named key paths, group 2 = bare unix paths.
+            $paths = array_values(array_unique(array_filter(
+                array_merge($pathMatches[1], $pathMatches[2])
+            )));
+
+            if (!empty($ips) || !empty($paths)) {
+                $results[] = [
+                    'file'         => $filePath,
+                    'commit'       => substr($commit, 0, 12),
+                    'server_ips'   => $ips,
+                    'server_paths' => $paths,
+                ];
+            }
+        }
+
+        return $results;
     }
 
     /**
