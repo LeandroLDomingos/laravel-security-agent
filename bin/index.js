@@ -3,13 +3,16 @@ import {
     intro, outro, confirm,
     spinner, note, cancel, isCancel
 } from '@clack/prompts';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { homedir } from 'node:os';
 import { copySecurity } from '../src/copy-security.js';
 import { copyCopilot } from '../src/copy-copilot.js';
 import { applyGitignore } from '../src/update-gitignore.js';
 import { installHook } from '../src/install-hook.js';
 import { copyAgent } from '../src/copy-agent.js';
+import { deployClaudeSkill } from '../src/deploy-claude-skill.js';
+import { deployGemini } from '../src/deploy-gemini.js';
 
 const cwd = process.cwd();
 
@@ -87,6 +90,48 @@ if (options.includes('hook')) {
         : '✔  pre-commit hook installed at .git/hooks/pre-commit');
 }
 
+// --- Claude Code skill ---
+{
+    const dest = join(homedir(), '.claude', 'skills', 'capi-guard', 'SKILL.md');
+    let overwrite = false;
+
+    if (existsSync(dest)) {
+        const answer = await confirm({
+            message: '~/.claude/skills/capi-guard/SKILL.md already exists. Overwrite?',
+            initialValue: false,
+        });
+        if (isCancel(answer)) { cancel('Cancelled.'); process.exit(0); }
+        overwrite = answer;
+    }
+
+    s.start('Deploying Capi Guard skill to Claude Code...');
+    const result = deployClaudeSkill(undefined, overwrite);
+    s.stop(result.skipped
+        ? '~/.claude/skills/capi-guard/SKILL.md kept (not overwritten)'
+        : '✔  Capi Guard skill installed at ~/.claude/skills/capi-guard/SKILL.md');
+}
+
+// --- Gemini / Google Antigravity ---
+{
+    const dest = join(homedir(), '.gemini', 'GEMINI.md');
+    let overwrite = false;
+
+    if (existsSync(dest) && readFileSync(dest, 'utf8').includes('<!-- capi-guard -->')) {
+        const answer = await confirm({
+            message: '~/.gemini/GEMINI.md already has Capi Guard block. Overwrite?',
+            initialValue: false,
+        });
+        if (isCancel(answer)) { cancel('Cancelled.'); process.exit(0); }
+        overwrite = answer;
+    }
+
+    s.start('Deploying Capi Guard to Gemini / Google Antigravity...');
+    const result = deployGemini(undefined, overwrite);
+    s.stop(result.skipped
+        ? '~/.gemini/GEMINI.md kept (not overwritten)'
+        : '✔  Capi Guard block appended to ~/.gemini/GEMINI.md');
+}
+
 // --- Antigravity Agent (PHP) ---
 if (options.includes('agent')) {
     let overwrite = false;
@@ -108,19 +153,24 @@ if (options.includes('agent')) {
         : `✔  Antigravity agent installed (${result.copied.length} files → app/Agents/, app/Skills/, app/Http/, config/, .github/)`);
 }
 
-const nextSteps = [];
-if (options.includes('claude'))  nextSteps.push('Claude Code: say "audit security" or "run SECURITY.md"');
-if (options.includes('copilot')) nextSteps.push('Copilot: .github/copilot-instructions.md is loaded automatically');
-if (options.includes('agent'))   nextSteps.push(
-    'Antigravity Agent:\n' +
-    '  1. Add route: Route::post("/api/agent/invoke", AgentController::class)->middleware(["auth:sanctum", ZeroTrustMiddleware::class]);\n' +
-    '  2. Issue a Sanctum token with ability "agent:invoke"\n' +
-    '  3. Register .github/manifest.json in your Copilot Extension settings\n' +
-    '  4. Optionally run: php artisan vendor:publish --tag=security-agent-config'
-);
+const nextSteps = [
+    'Claude Code: the "capi-guard" skill is now available — just ask Claude to audit security',
+    'Gemini CLI: Capi Guard instructions are active in ~/.gemini/GEMINI.md',
+    'Copilot: .github/copilot-instructions.md and .github/agents/ are installed automatically',
+];
+
+if (options.includes('agent')) {
+    nextSteps.push(
+        'Antigravity Agent (PHP backend):\n' +
+        '  1. Add route: Route::post("/api/agent/invoke", AgentController::class)->middleware(["auth:sanctum", ZeroTrustMiddleware::class]);\n' +
+        '  2. Issue a Sanctum token with ability "agent:invoke"\n' +
+        '  3. Register .github/manifest.json in your Copilot Extension settings\n' +
+        '  4. Optionally run: php artisan vendor:publish --tag=security-agent-config'
+    );
+}
 
 if (nextSteps.length > 0) {
-    note(nextSteps.join('\n'), 'Next step');
+    note(nextSteps.join('\n'), 'Next steps');
 }
 
 const capybara = `
