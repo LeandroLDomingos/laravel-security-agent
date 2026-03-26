@@ -1,0 +1,99 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "schema_version": "v1",
+  "name_for_human": "Capi Guard Security Agent",
+  "name_for_model": "capi_guard_security_agent",
+  "description_for_human": "Scan your Laravel application for security vulnerabilities, analyze controller authorization flows, and apply known CVE patches — all from within GitHub Copilot Chat.",
+  "description_for_model": "Security analysis agent for Laravel applications. Exposes four callable skills: vulnerabilityScan (static analysis across 13 security categories), analyzeAuthFlow (reflection-based authorization gap detection), applySecurityPatch (CVE-driven file patching), and sanitizeGitHistory (full git history audit and scrubbing via git filter-repo). All calls require a valid Sanctum Bearer token with the 'agent:invoke' ability and the X-Agent-Context session header.",
+  "auth": {
+    "type": "user_http",
+    "authorization_type": "bearer"
+  },
+  "api": {
+    "type": "openapi",
+    "url": "/api/agent/openapi.json"
+  },
+  "tools": [
+    {
+      "name": "vulnerabilityScan",
+      "description": "Scans a file path for Laravel security vulnerabilities across 13 categories: IDOR, SQL Injection, Mass Assignment, XSS, CSRF, File Uploads, Authorization, Rate Limiting, Session, Security Headers, Credentials, Git Secrets, and Input Validation. Returns findings sorted by severity (critical → important → suggestion).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Relative path within the Laravel project to scan. Examples: 'app/Http/Controllers', 'app/Models', 'app/'."
+          }
+        },
+        "required": ["path"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "analyzeAuthFlow",
+      "description": "Inspects a Laravel controller's public methods using PHP Reflection to detect missing $this->authorize() or Gate::authorize() calls. Returns a per-method authorization gap report, highlighting destructive methods (store, update, destroy) that lack authorization.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "controller": {
+            "type": "string",
+            "description": "Controller class name or relative file path. Examples: 'UserController', 'Api/OrderController', 'app/Http/Controllers/UserController.php'."
+          }
+        },
+        "required": ["controller"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "applySecurityPatch",
+      "description": "Applies a known security patch for a CVE to the specified file. Looks up the CVE in the patch registry (config/security-agent.php), creates a timestamped backup, applies the transformation, and runs post-patch Artisan commands (optimize:clear by default). Returns a diff summary and command results.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "cveId": {
+            "type": "string",
+            "description": "CVE identifier for the patch to apply. Must match an entry in config/security-agent.php > patch_registry. Example: 'CVE-2024-1234'.",
+            "pattern": "^CVE-\\d{4}-\\d+$"
+          },
+          "filePath": {
+            "type": "string",
+            "description": "Relative path to the file that needs patching. Example: 'app/Http/Middleware/VerifyCsrfToken.php'."
+          }
+        },
+        "required": ["cveId", "filePath"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "sanitizeGitHistory",
+      "description": "Performs a two-phase git history sanitization. Phase 1 (audit) discovers secrets across all branches: APP_KEY (base64:...), DB/Redis/Mail credentials, and internal staging IPs (excluding loopback/private ranges and semver). Phase 2 (scrub) generates and optionally executes a git filter-repo script that purges sensitive files (e.g. .env, deploy.php, *.pem) from full history and blob-replaces secrets with [REDACTED], then runs aggressive GC. Always verifies a backup branch before rewriting.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "backupBranch": {
+            "type": "string",
+            "description": "Name of the git branch that must exist before history is rewritten. Defaults to 'backup/before-sanitize'.",
+            "default": "backup/before-sanitize"
+          },
+          "dryRun": {
+            "type": "boolean",
+            "description": "If true (default), only audit and generate the script — do not execute the rewrite.",
+            "default": true
+          },
+          "repoPath": {
+            "type": "string",
+            "description": "Relative path from Laravel root to the git repository. Defaults to the project root."
+          },
+          "generateScriptPath": {
+            "type": "string",
+            "description": "Where to write the sanitizer script. Defaults to 'storage/app/sanitize-git-history.sh'."
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    }
+  ],
+  "contact_email": "security@example.com",
+  "legal_info_url": "https://github.com/LeandroLDomingos/laravel-security-agent/blob/main/LICENSE"
+}

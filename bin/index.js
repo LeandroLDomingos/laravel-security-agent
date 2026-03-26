@@ -9,6 +9,7 @@ import { copySecurity } from '../src/copy-security.js';
 import { copyCopilot } from '../src/copy-copilot.js';
 import { applyGitignore } from '../src/update-gitignore.js';
 import { installHook } from '../src/install-hook.js';
+import { copyAgent } from '../src/copy-agent.js';
 
 const cwd = process.cwd();
 
@@ -30,6 +31,7 @@ const options = await multiselect({
         { value: 'copilot',  label: '.github/copilot-instructions.md',     hint: 'GitHub Copilot security agent' },
         { value: 'gitignore',label: 'Update .gitignore',                   hint: 'protects deploy.php, .env, SSH keys' },
         { value: 'hook',     label: 'Pre-commit hook',                     hint: 'blocks commits of sensitive files' },
+        { value: 'agent',    label: 'Antigravity Agent (PHP)',              hint: 'Copilot Skills + PHP 8.3 agent classes' },
     ],
 });
 
@@ -100,9 +102,37 @@ if (options.includes('hook')) {
         : '✔  pre-commit hook installed at .git/hooks/pre-commit');
 }
 
+// --- Antigravity Agent (PHP) ---
+if (options.includes('agent')) {
+    let overwrite = false;
+    const agentEntry = join(cwd, 'app', 'Agents', 'Security', 'SecurityAgent.php');
+
+    if (existsSync(agentEntry)) {
+        const answer = await confirm({
+            message: 'app/Agents/Security/ already exists. Overwrite agent files?',
+            initialValue: false,
+        });
+        if (isCancel(answer)) { cancel('Cancelled.'); process.exit(0); }
+        overwrite = answer;
+    }
+
+    s.start('Scaffolding Antigravity agent classes...');
+    const result = copyAgent(cwd, overwrite);
+    s.stop(result.skipped
+        ? 'Agent files kept (not overwritten)'
+        : `✔  Antigravity agent installed (${result.copied.length} files → app/Agents/, app/Skills/, app/Http/, config/, .github/)`);
+}
+
 const nextSteps = [];
 if (options.includes('claude'))  nextSteps.push('Claude Code: say "audit security" or "run SECURITY.md"');
 if (options.includes('copilot')) nextSteps.push('Copilot: .github/copilot-instructions.md is loaded automatically');
+if (options.includes('agent'))   nextSteps.push(
+    'Antigravity Agent:\n' +
+    '  1. Add route: Route::post("/api/agent/invoke", AgentController::class)->middleware(["auth:sanctum", ZeroTrustMiddleware::class]);\n' +
+    '  2. Issue a Sanctum token with ability "agent:invoke"\n' +
+    '  3. Register .github/manifest.json in your Copilot Extension settings\n' +
+    '  4. Optionally run: php artisan vendor:publish --tag=security-agent-config'
+);
 
 if (nextSteps.length > 0) {
     note(nextSteps.join('\n'), 'Next step');
@@ -111,7 +141,7 @@ if (nextSteps.length > 0) {
 const capybara = `
 　　　　　/)─―ヘ
 　　　＿／　　　　＼
-　 ／　　　　●　　　●丶
+　／　　　　●　　　●丶
 　｜　　　　　　　▼　|
 　｜　　　　　　　亠ノ
 　 U￣U￣￣￣￣U￣U
