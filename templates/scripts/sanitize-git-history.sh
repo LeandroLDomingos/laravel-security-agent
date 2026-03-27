@@ -149,9 +149,11 @@ SECRET_PATTERNS = [
     (rb'(?:API_KEY|SECRET_KEY|AUTH_TOKEN)\s*=\s*\S{8,}', b'SECRET=[REDACTED]'),
     # Hardcoded PHP password strings
     (rb"'password'\s*=>\s*'[^']{3,}'",              b"'password' => '[REDACTED]'"),
-    # Staging IPs (excludes 127.x, 10.x, 172.x, 192.168.x, and semver-like x.x.x patterns)
+    # All server IPs including private RFC-1918 ranges (10.x, 172.16-31.x, 192.168.x).
+    # Private IPs in deploy.php expose internal network topology and must be redacted.
+    # Only excludes loopback (127.) and link-local (169.254.).
     (
-        rb'\b(?!127\.|10\.|172\.|192\.168\.)(?!(?:\d+\.){2}\d+$)(\d{1,3}\.){3}\d{1,3}\b',
+        rb'\b(?!127\.|169\.254\.)(?:\d{1,3}\.){3}\d{1,3}\b',
         b'[REDACTED_IP]'
     ),
 ]

@@ -53,9 +53,9 @@ final class GitHistorySanitizationSkill implements SkillInterface
         'API_KEY'      => '/(?:API_KEY|SECRET_KEY|AUTH_TOKEN)\s*=\s*\S{8,}/',
         // Hardcoded credentials in PHP config files
         'PHP_PASSWORD' => "/'password'\s*=>\s*'[^']{3,}'/",
-        // Public/staging IPs in generic files — excludes private RFC-1918 ranges to
-        // avoid noise. Private IPs in deploy.php are handled by auditDeployPhpInHistory().
-        'STAGING_IP'   => '/\b(?!127\.|10\.|172\.|192\.168\.)(?!(?:\d+\.){2}\d+$)(?:\d{1,3}\.){3}\d{1,3}\b/',
+        // Any server IP in history — includes private RFC-1918 ranges (10.x, 172.16-31.x, 192.168.x).
+        // Only excludes loopback (127.) and link-local (169.254.) to avoid noise on localhost references.
+        'STAGING_IP'   => '/\b(?!127\.|169\.254\.)(?:\d{1,3}\.){3}\d{1,3}\b/',
     ];
 
     public function name(): string
@@ -413,7 +413,12 @@ final class GitHistorySanitizationSkill implements SkillInterface
         $template = file_get_contents($templatePath);
 
         // Inject dynamic values
-        $fileList  = implode("\n", array_map(fn ($f) => "  \"$f\" \\", $sensitiveFiles));
+        // deploy.php and .env.example are redacted in-place by the blob callback — never deleted from history.
+        $filesToDelete = array_values(array_filter(
+            $sensitiveFiles,
+            fn (string $f): bool => !preg_match('/deploy\.php$|\.env\.example$/i', $f)
+        ));
+        $fileList  = implode("\n", array_map(fn ($f) => "  \"$f\" \\", $filesToDelete));
         $template  = str_replace('{{SENSITIVE_FILES}}', $fileList, $template);
         $template  = str_replace('{{BACKUP_BRANCH}}', $backupBranch, $template);
         $template  = str_replace('{{REPO_PATH}}', $repoPath, $template);

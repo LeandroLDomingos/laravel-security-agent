@@ -9,6 +9,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.3] - 2026-03-27
+
+### Fixed
+- `sanitizeGitHistory`: `.env.example` is no longer deleted from git history. Like `deploy.php`, it is now redacted in-place by the blob callback — secrets are replaced while the file is preserved.
+
+## [1.4.2] - 2026-03-27
+
+### Fixed
+- `sanitizeGitHistory`: general history scan (`STAGING_IP` pattern) now detects private RFC-1918 IPs (`10.x`, `172.16-31.x`, `192.168.x`) across all files, consistent with `auditDeployPhpInHistory` and the blob callback. Only loopback (`127.x`) and link-local (`169.254.x`) remain excluded.
+
+## [1.4.1] - 2026-03-27
+
+### Fixed
+- `sanitizeGitHistory`: `deploy.php` is no longer deleted from git history. It is now redacted in-place — IPs and secrets are replaced with `[REDACTED_IP]` / `[REDACTED]` while the file itself is preserved.
+- Blob callback IP pattern now covers private RFC-1918 ranges (`10.x`, `172.16-31.x`, `192.168.x`), consistent with `auditDeployPhpInHistory`. Only loopback (`127.x`) and link-local (`169.254.x`) are excluded.
+
 ## [1.4.0] - 2026-03-27
 
 ### Added
@@ -85,7 +101,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-[Unreleased]: https://github.com/LeandroLDomingos/laravel-security-agent/compare/v1.4.0...HEAD
+[Unreleased]: https://github.com/LeandroLDomingos/laravel-security-agent/compare/v1.4.3...HEAD
+[1.4.3]: https://github.com/LeandroLDomingos/laravel-security-agent/compare/v1.4.2...v1.4.3
+[1.4.2]: https://github.com/LeandroLDomingos/laravel-security-agent/compare/v1.4.1...v1.4.2
+[1.4.1]: https://github.com/LeandroLDomingos/laravel-security-agent/compare/v1.4.0...v1.4.1
 [1.4.0]: https://github.com/LeandroLDomingos/laravel-security-agent/compare/v1.3.5...v1.4.0
 [1.3.5]: https://github.com/LeandroLDomingos/laravel-security-agent/compare/v1.3.4...v1.3.5
 [1.3.4]: https://github.com/LeandroLDomingos/laravel-security-agent/compare/v1.3.3...v1.3.4
