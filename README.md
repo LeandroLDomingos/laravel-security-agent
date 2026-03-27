@@ -8,6 +8,8 @@ A one-command security toolkit for Laravel projects. Run it once and Capi Guard 
 
 ## Usage
 
+### Install
+
 Run at the root of your Laravel project:
 
 ```bash
@@ -15,6 +17,16 @@ npx laravel-security-agent
 ```
 
 No prompts. Everything installs automatically.
+
+### Update
+
+To update the pre-commit hook and all files to the latest version, run again with `@latest`:
+
+```bash
+npx laravel-security-agent@latest
+```
+
+The pre-commit hook is always overwritten. Other files (SECURITY.md, agents, etc.) will ask before overwriting.
 
 ## What Gets Installed
 
