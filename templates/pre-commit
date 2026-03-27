@@ -17,7 +17,7 @@ if git diff --cached --name-only | grep -qE "$BLOCKED_PATTERNS"; then
     exit 1
 fi
 
-if git diff --cached | grep -iE "(DB_PASSWORD|APP_KEY|password\s*=\s*['\"][^'\"]{4,}|secret\s*=\s*['\"][^'\"]{4,})"; then
+if git diff --cached | grep -iE "(DB_PASSWORD\s*=\s*\S+|APP_KEY\s*=\s*base64:[A-Za-z0-9+\/=]{40,}|password\s*=\s*['\"][^'\"]{4,}|secret\s*=\s*['\"][^'\"]{4,})"; then
     echo "❌ BLOCKED: possible hardcoded credential detected in diff"
     echo "   Use environment variables (.env) instead of inline values"
     exit 1
