@@ -96,13 +96,14 @@ final class SecurityAgent implements AntigravityAgentInterface
         $parts = explode(':', $goal, 3);
 
         $steps[] = match ($parts[0]) {
-            'scan'  => ['skill' => 'vulnerabilityScan', 'params' => ['path' => $parts[1] ?? 'app/']],
-            'auth'  => ['skill' => 'analyzeAuthFlow',   'params' => ['controller' => $parts[1] ?? '']],
-            'patch' => ['skill' => 'applySecurityPatch', 'params' => [
-                            'cveId'    => $parts[1] ?? '',
-                            'filePath' => $parts[2] ?? '',
-                        ]],
-            default => throw new \InvalidArgumentException("Unknown goal verb: {$parts[0]}"),
+            'scan'     => ['skill' => 'vulnerabilityScan', 'params' => ['path' => $parts[1] ?? 'app/']],
+            'auth'     => ['skill' => 'analyzeAuthFlow',   'params' => ['controller' => $parts[1] ?? '']],
+            'patch'    => ['skill' => 'applySecurityPatch', 'params' => [
+                              'cveId'    => $parts[1] ?? '',
+                              'filePath' => $parts[2] ?? '',
+                          ]],
+            'sanitize' => ['skill' => 'sanitizeGitHistory', 'params' => json_decode(base64_decode($parts[1] ?? 'e30='), associative: true) ?? []],
+            default    => throw new \InvalidArgumentException("Unknown goal verb: {$parts[0]}"),
         };
 
         return $steps;

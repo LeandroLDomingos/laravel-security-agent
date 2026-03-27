@@ -33,17 +33,38 @@ error()   { echo -e "${RED}[ERROR]${NC} $*" >&2; exit 1; }
 # ── Step 0: Pre-flight checks ────────────────────────────────────────────────
 info "Pre-flight checks..."
 
-command -v git          >/dev/null 2>&1 || error "git not found in PATH."
-command -v git-filter-repo >/dev/null 2>&1 \
-  || python3 -m git_filter_repo --version >/dev/null 2>&1 \
-  || error "git-filter-repo not found. Install with: pip install git-filter-repo"
+command -v git >/dev/null 2>&1 || error "git not found in PATH."
+
+# Add common Python Scripts paths so git-filter-repo is found on Windows
+export PATH="${PATH}:/c/Users/$(whoami)/AppData/Local/Programs/Python/Python312/Scripts:/c/Users/$(whoami)/AppData/Roaming/Python/Scripts"
+
+USE_FILTER_REPO=false
+if command -v git-filter-repo >/dev/null 2>&1 \
+   || python3 -m git_filter_repo --version >/dev/null 2>&1; then
+  USE_FILTER_REPO=true
+  info "Using git-filter-repo (fast mode)"
+else
+  warn "git-filter-repo not found — falling back to git filter-branch."
+  warn "Install for faster rewrites: pip install git-filter-repo"
+fi
 
 cd "${REPO_PATH}"
 
-# Ensure we are on a clean working tree
+# ── Auto-stash uncommitted changes (required by filter operations) ───────────
+STASH_NEEDED=false
 if ! git diff --quiet || ! git diff --cached --quiet; then
-  error "Working tree has uncommitted changes. Commit or stash them before running."
+  info "Stashing uncommitted changes before rewrite..."
+  git stash push -u -m "capi-guard-sanitize-temp"
+  STASH_NEEDED=true
 fi
+
+restore_stash() {
+  if [ "$STASH_NEEDED" = true ]; then
+    info "Restoring stashed changes..."
+    git stash pop || warn "Could not restore stash — run 'git stash pop' manually."
+  fi
+}
+trap restore_stash EXIT
 
 # ── Step 1: Integrity — verify backup branch ─────────────────────────────────
 info "Checking backup branch '${BACKUP_BRANCH}'..."
@@ -85,15 +106,21 @@ SENSITIVE_FILES=(
 )
 
 if [ ${#SENSITIVE_FILES[@]} -gt 0 ]; then
-  FILTER_ARGS=()
-  for f in "${SENSITIVE_FILES[@]}"; do
-    FILTER_ARGS+=("--path" "${f}")
-  done
-
-  git filter-repo \
-    "${FILTER_ARGS[@]}" \
-    --invert-paths \
-    --force
+  if [ "$USE_FILTER_REPO" = true ]; then
+    FILTER_ARGS=()
+    for f in "${SENSITIVE_FILES[@]}"; do
+      FILTER_ARGS+=("--path" "${f}")
+    done
+    git filter-repo "${FILTER_ARGS[@]}" --invert-paths --force
+  else
+    REMOVE_CMD=""
+    for f in "${SENSITIVE_FILES[@]}"; do
+      REMOVE_CMD="${REMOVE_CMD} git rm --cached --ignore-unmatch \"${f}\" 2>/dev/null;"
+    done
+    FILTER_BRANCH_SQUELCH_WARNING=1 git filter-branch --force \
+      --index-filter "${REMOVE_CMD}" \
+      --prune-empty --tag-name-filter cat -- --all
+  fi
   info "✔ Sensitive files purged from history."
 else
   info "No sensitive files found in history — skipping file purge."
@@ -102,9 +129,10 @@ fi
 # ── Step 4: Blob-replace secrets with [REDACTED] ─────────────────────────────
 info "Replacing secrets in history blobs..."
 
-# Build a Python callback script for git filter-repo
-CALLBACK_SCRIPT=$(mktemp /tmp/capi_guard_callback_XXXXXX.py)
-cat > "${CALLBACK_SCRIPT}" << 'PYTHON_EOF'
+if [ "$USE_FILTER_REPO" = true ]; then
+  # Build a Python callback script for git filter-repo (precise byte-level replacements)
+  CALLBACK_SCRIPT=$(mktemp /tmp/capi_guard_callback_XXXXXX.py)
+  cat > "${CALLBACK_SCRIPT}" << 'PYTHON_EOF'
 import re
 
 SECRET_PATTERNS = [
@@ -141,11 +169,22 @@ def blob_callback(blob):
 
 PYTHON_EOF
 
-git filter-repo \
-  --blob-callback "$(cat "${CALLBACK_SCRIPT}")" \
-  --force
-
-rm -f "${CALLBACK_SCRIPT}"
+  git filter-repo --blob-callback "$(cat "${CALLBACK_SCRIPT}")" --force
+  rm -f "${CALLBACK_SCRIPT}"
+else
+  # Fallback: git filter-branch + sed for common secret patterns
+  info "  Running git filter-branch for secret replacement (this may take several minutes)..."
+  FILTER_BRANCH_SQUELCH_WARNING=1 git filter-branch --force --tree-filter \
+    'find . -type f \( -name "*.env*" -o -name "*.php" -o -name "*.json" -o -name "*.yml" -o -name "*.yaml" \) \
+     -not -path "./.git/*" -exec sed -i \
+       -e "s/APP_KEY=base64:[A-Za-z0-9+\/=]\{40,\}/APP_KEY=[REDACTED]/g" \
+       -e "s/DB_PASSWORD=[^ ]*/DB_PASSWORD=[REDACTED]/g" \
+       -e "s/REDIS_PASSWORD=[^ ]*/REDIS_PASSWORD=[REDACTED]/g" \
+       -e "s/MAIL_PASSWORD=[^ ]*/MAIL_PASSWORD=[REDACTED]/g" \
+     {} \; 2>/dev/null || true' \
+    --tag-name-filter cat -- --all
+  rm -rf .git/refs/original/ 2>/dev/null || true
+fi
 info "✔ Secrets replaced in history blobs."
 
 # ── Step 5: Commit .gitignore changes ────────────────────────────────────────

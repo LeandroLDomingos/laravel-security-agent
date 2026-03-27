@@ -91,9 +91,10 @@ final class AgentController extends Controller
     private function deriveGoal(string $skill, array $params): string
     {
         return match ($skill) {
-            'vulnerabilityScan'  => 'scan:'  . ($params['path']       ?? 'app/'),
-            'analyzeAuthFlow'    => 'auth:'  . ($params['controller'] ?? ''),
-            'applySecurityPatch' => 'patch:' . ($params['cveId'] ?? '') . ':' . ($params['filePath'] ?? ''),
+            'vulnerabilityScan'  => 'scan:'     . ($params['path']       ?? 'app/'),
+            'analyzeAuthFlow'    => 'auth:'     . ($params['controller'] ?? ''),
+            'applySecurityPatch' => 'patch:'    . ($params['cveId'] ?? '') . ':' . ($params['filePath'] ?? ''),
+            'sanitizeGitHistory' => 'sanitize:' . base64_encode(json_encode($params)),
             default              => $skill,
         };
     }

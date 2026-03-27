@@ -63,7 +63,7 @@ The flagship feature. Capi Guard scaffolds a production-ready, zero-trust AI age
 | 🔍 **vulnerabilityScan** | Regex scan across 13 security categories in any path |
 | 🛡️ **analyzeAuthFlow** | PHP Reflection traces controllers, finds missing `authorize()` calls |
 | 🩹 **applySecurityPatch** | Applies CVE patches with backup + runs Artisan commands post-patch |
-| 🧹 **sanitizeGitHistory** | Generates a `git filter-repo` script to purge secrets from full git history |
+| 🧹 **sanitizeGitHistory** | Generates a `git filter-repo` script to purge secrets from full git history. Runs on Linux, macOS, and Windows (Git for Windows) |
 
 ### Copilot Sub-Agents
 
@@ -116,6 +116,7 @@ When you ask any AI to "audit security", it checks 13 categories:
 - Node.js 18+
 - Laravel project (`composer.json` at the root)
 - *For the PHP Agent:* PHP 8.2+ and Laravel Sanctum
+- *For `sanitizeGitHistory` on Windows:* [Git for Windows](https://gitforwindows.org/) (provides the Bash binary used to execute the sanitizer script)
 
 ## License
 

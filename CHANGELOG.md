@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-03-27
+
+### Added
+- `sanitizeGitHistory`: `executeScript()` now resolves the correct Bash binary on Windows hosts by detecting Git for Windows (`C:\Program Files\Git\bin\bash.exe` with fallback to `usr\bin\bash.exe`). Unix hosts are unchanged.
+
 ## [1.3.5] - 2026-03-27
 
 ### Fixed
@@ -80,7 +85,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-[Unreleased]: https://github.com/LeandroLDomingos/laravel-security-agent/compare/v1.3.5...HEAD
+[Unreleased]: https://github.com/LeandroLDomingos/laravel-security-agent/compare/v1.4.0...HEAD
+[1.4.0]: https://github.com/LeandroLDomingos/laravel-security-agent/compare/v1.3.5...v1.4.0
 [1.3.5]: https://github.com/LeandroLDomingos/laravel-security-agent/compare/v1.3.4...v1.3.5
 [1.3.4]: https://github.com/LeandroLDomingos/laravel-security-agent/compare/v1.3.3...v1.3.4
 [1.3.3]: https://github.com/LeandroLDomingos/laravel-security-agent/compare/v1.3.2...v1.3.3

@@ -336,7 +336,7 @@ final class GitHistorySanitizationSkill implements SkillInterface
         // Matches common Deployer/Envoy server path keys and bare Unix paths.
         $pathPattern = '/(?:deploy_path|current_path|release_path|app_path|root_path|upload_path)' .
                        '\s*[=>\'"]+\s*[\'"]?(\/[^\s\'">,;)]+)' .
-                       '|(?<![.\w])(?:\/(?:var|home|srv|opt|www|data|sites)\/[^\s\'">,;)]+)/';
+                       '|(?<![.\w])(\/(?:var|home|srv|opt|www|data|sites)\/[^\s\'">,;)]+)/';
 
         $results = [];
 
@@ -424,7 +424,14 @@ final class GitHistorySanitizationSkill implements SkillInterface
     /** @return array{exit_code: int, output: string, error: string} */
     private function executeScript(string $repoPath, string $scriptPath): array
     {
-        $process = new Process(['bash', $scriptPath], $repoPath, null, null, 600);
+        // Resolve bash binary: prefer Git for Windows bash on Windows hosts.
+        $bash = PHP_OS_FAMILY === 'Windows'
+            ? (file_exists('C:\\Program Files\\Git\\bin\\bash.exe')
+                ? 'C:\\Program Files\\Git\\bin\\bash.exe'
+                : 'C:\\Program Files\\Git\\usr\\bin\\bash.exe')
+            : 'bash';
+
+        $process = new Process([$bash, $scriptPath], $repoPath, null, null, 600);
         $process->run();
 
         return [
