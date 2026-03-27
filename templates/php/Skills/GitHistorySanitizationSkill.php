@@ -53,7 +53,8 @@ final class GitHistorySanitizationSkill implements SkillInterface
         'API_KEY'      => '/(?:API_KEY|SECRET_KEY|AUTH_TOKEN)\s*=\s*\S{8,}/',
         // Hardcoded credentials in PHP config files
         'PHP_PASSWORD' => "/'password'\s*=>\s*'[^']{3,}'/",
-        // Internal/staging IPs (excludes 127.x, 10.x private ranges only if they look like IPs, not semver)
+        // Public/staging IPs in generic files — excludes private RFC-1918 ranges to
+        // avoid noise. Private IPs in deploy.php are handled by auditDeployPhpInHistory().
         'STAGING_IP'   => '/\b(?!127\.|10\.|172\.|192\.168\.)(?!(?:\d+\.){2}\d+$)(?:\d{1,3}\.){3}\d{1,3}\b/',
     ];
 
@@ -326,11 +327,11 @@ final class GitHistorySanitizationSkill implements SkillInterface
      */
     private function auditDeployPhpInHistory(string $repoPath, array $deployFiles): array
     {
-        // Matches public IPs — excludes loopback (127.), link-local (169.254.),
-        // and RFC-1918 private ranges (10., 172.16-31., 192.168.) which are
-        // internal infrastructure and not staging/production exposures.
-        $ipPattern = '/\b(?!127\.|169\.254\.|10\.|172\.(?:1[6-9]|2\d|3[01])\.|192\.168\.)' .
-                     '(?:\d{1,3}\.){3}\d{1,3}\b/';
+        // Matches any routable IP found in deploy.php — including RFC-1918 private
+        // ranges (10., 172.16-31., 192.168.) because internal server IPs committed
+        // to a repository expose network topology even when not publicly routable.
+        // Only excludes loopback (127.) and link-local (169.254.).
+        $ipPattern = '/\b(?!127\.|169\.254\.)(?:\d{1,3}\.){3}\d{1,3}\b/';
 
         // Matches common Deployer/Envoy server path keys and bare Unix paths.
         $pathPattern = '/(?:deploy_path|current_path|release_path|app_path|root_path|upload_path)' .
