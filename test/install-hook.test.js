@@ -36,10 +36,10 @@ test('pre-commit regex does not block variable names without values (false posit
     installHook(dir);
     const hook = readFileSync(join(dir, '.git', 'hooks', 'pre-commit'), 'utf8');
 
-    // Verify the hook uses the precise credential pattern (requires a value after =)
+    // Verify the hook uses the precise credential pattern (requires an alphanumeric value of 4+ chars)
     assert.ok(
-        hook.includes('DB_PASSWORD\\s*=\\s*\\S+'),
-        'hook must require a value after DB_PASSWORD= (not block bare variable names)'
+        hook.includes('DB_PASSWORD\\s*=\\s*[a-zA-Z0-9'),
+        'hook must require an alphanumeric value after DB_PASSWORD= (not block bare variable names or punctuation)'
     );
     assert.ok(
         hook.includes('APP_KEY\\s*=\\s*base64:'),
